@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+  #logs {
+    background-color: black;
+    color:white;
+    height:600px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    text-align: left;
+    padding-left:10px;
+  }
+  </style>
+</head>
+
+<body>
+
+<h1>Console Streaming with Server Sent Events(SSE)</h1>
+<select id="ddlViewBy" onchange="" style="
+    height: 30px;
+    font-size: large;
+    background: yellow;
+    margin: 10px
+">
+  <option value="111">CRQ 111</option>
+  <option value="222">CRQ 222</option>
+</select>
+<button  id="startBTN">Start Cmds</button>
+<button  id="stopBTN">Stop Cmds</button>
+<button onclick="myFunction('latest')">Stream latest</button>
+<button onclick="myFunction('All')">Stream All</button>
+<button onclick="myFunction('ID')">Stream after ID: </button>
+<input type="text" placeholder="Command ID...." id="myInput">
+<button onclick="stopStream()">Stop Stream</button>
+<button id="clrstream">Clear Stream</button>
+<br>
+<div id="logs">
+</div>
+
+<script>
+  var e = document.getElementById("ddlViewBy")
+  var source  = ""
+  var keepLooping = false;
+
+
+interval = null;
+
+clrstream.onclick = function(){
+    var x = document.getElementById("ddlViewBy").value; 
+    const xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "http://localhost:8000/clear-stream/"+x);
+    xhttp.send();
+}
+
+startBTN.onclick = function () {
+    var i = 0;
+    var x = document.getElementById("ddlViewBy").value;            
+    var cmdstr = ""
+    const xhttp = new XMLHttpRequest();
+    interval = setInterval(async function () {
+        cmdstr="Command String  - " + i++
+        xhttp.open("GET", "http://localhost:8000/push-logs/"+x+"?commandstr="+cmdstr);
+        xhttp.send();
+    }, 3000);
+};
+
+stopBTN.onclick = function () {
+    clearInterval(interval);
+};
+
+
+function stopStream(){
+  if(window.source){
+          window.source.close()
+                }
+}
+
+function myFunction(param) {
+ console.log(param)
+  var x = document.getElementById("ddlViewBy").value;
+  e.value = x
+  if(window.source){
+  	window.source.close()
+  }
+
+  if(param == 'latest'){
+      window.source = new EventSource("http://localhost:8000/stream-logs/"+x);
+  }
+  else if(param == 'ID'){
+         var inputVal = document.getElementById("myInput").value;       
+          window.source = new EventSource("http://localhost:8000/stream-logs/"+x+"?latest_id="+inputVal);
+  }
+  else{
+    window.source = new EventSource("http://localhost:8000/stream-logs/"+x+"?latest_id=0");
+  }
+  document.getElementById("logs").innerHTML = ""
+  window.source.onmessage = function(event) { 
+    document.getElementById("logs").innerHTML += event.data + "<br>";
+  };
+}
+</script>
+
+</body>
+</html>
